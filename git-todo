@@ -90,29 +90,9 @@ get_distance() {
 		local ahead=`echo $(git rev-list $base..$ref | wc -l)`
 		local behind=`echo $(git rev-list $ref..$base | wc -l)`
 	else
-# ahead 커밋 전체
-		local ahead=`echo $(git rev-list $base..$ref | wc -l)`
-# ahead 커밋 중 $base를 직접 머지한 merge 커밋은 제외
-		local aheadmerge=0
-		for parent in $(git rev-list $base..$ref --merges --max-parents=2 --parents | awk '{print $3}'); do
-			local mergebase=$(git merge-base $base $parent)
-			if [ "$parent" == "$mergebase" ]; then
-				let "aheadmerge++"
-			fi
-		done
-		let "ahead -= aheadmerge"
-
-# behind 커밋 전체
-		local behind=`echo $(git rev-list $ref..$base | wc -l)`
-# behind 커밋 중 $ref를 직접 머지한 merge 커밋은 제외
-		local behindmerge=0
-		for parent in $(git rev-list $ref..$base --merges --max-parents=2 --parents | awk '{print $3}'); do
-			local mergebase=$(git merge-base $ref $parent)
-			if [ "$parent" == "$mergebase" ]; then
-				let "behindmerge++"
-			fi
-		done
-		let "behind -= behindmerge"
+		# merge commit 들은 distance 계산에서 제외 (디폴트 동작)
+		local ahead=`echo $(git rev-list $base..$ref --no-merges | wc -l)`
+		local behind=`echo $(git rev-list $ref..$base --no-merges | wc -l)`
 	fi
 
 	if [ "$ahead" = "0" ]; then
@@ -135,7 +115,7 @@ get_distance() {
 refs=""
 
 TODO_REF='local'
-EXCLUDE_MERGE="no"
+EXCLUDE_MERGE="yes"
 
 init_opts() {
 	while getopts rtam opt; do
@@ -147,7 +127,7 @@ init_opts() {
 				;;
 			a) TODO_REF="all";;
 			t) TODO_REF="tag";;
-			m) EXCLUDE_MERGE="yes";;
+			m) EXCLUDE_MERGE="no";;
 			?) echo "usage: git todo [-rtam] base";exit 1;;
 			*) echo "$opt";exit 1;;
 		esac
