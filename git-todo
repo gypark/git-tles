@@ -86,8 +86,14 @@ get_distance() {
 		base_mark="[@]"
 	fi
 
-	local ahead=`echo $(git rev-list $base..$ref | wc -l)`
-	local behind=`echo $(git rev-list $ref..$base | wc -l)`
+	if [ "$EXCLUDE_MERGE" == "no" ]; then
+		local ahead=`echo $(git rev-list $base..$ref | wc -l)`
+		local behind=`echo $(git rev-list $ref..$base | wc -l)`
+	else
+		# merge commit 들은 distance 계산에서 제외 (디폴트 동작)
+		local ahead=`echo $(git rev-list $base..$ref --no-merges | wc -l)`
+		local behind=`echo $(git rev-list $ref..$base --no-merges | wc -l)`
+	fi
 
 	if [ "$ahead" = "0" ]; then
 		ahead=""
@@ -109,9 +115,10 @@ get_distance() {
 refs=""
 
 TODO_REF='local'
+EXCLUDE_MERGE="yes"
 
 init_opts() {
-	while getopts rta opt; do
+	while getopts rtam opt; do
 		case $opt in
 			r)
 				if [ "$TODO_REF" != "all" ]; then
@@ -120,7 +127,8 @@ init_opts() {
 				;;
 			a) TODO_REF="all";;
 			t) TODO_REF="tag";;
-			?) echo "usage: git todo [-rta] base";exit 1;;
+			m) EXCLUDE_MERGE="no";;
+			?) echo "usage: git todo [-rtam] base";exit 1;;
 			*) echo "$opt";exit 1;;
 		esac
 	done
